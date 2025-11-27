@@ -7,6 +7,13 @@ from openai import OpenAI
 from gtts import gTTS
 import pygame
 import os
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException
+import time
 
 # pip install pocketsphinx
 
@@ -70,16 +77,68 @@ def processCommand(c):
     elif "open linkedin" in c.lower():
         webbrowser.open("https://linkedin.com")
     elif c.lower().startswith("play"):
-        print("Full command:", repr(c))
-        song_name = c.lower().split(" ")[1]
-        print("Looking for song:", repr(song_name))
+        song_name = c[5:].strip()
+        print("🎵 Auto-playing first YouTube result for:", repr(song_name))
 
-        if song_name in musicLibrary.music:
-            link = musicLibrary.music[song_name]
-            webbrowser.open(link)
-            speak(f"Playing {song_name}")
-        else:
-            speak("Sorry, couldn't find that song")
+        search_url = (
+            "https://www.youtube.com/results?search_query="
+            + song_name.replace(" ", "+")
+        )
+
+        options = webdriver.ChromeOptions()
+        options.add_argument("--new-window")
+        driver = webdriver.Chrome(options=options)
+
+        driver.maximize_window()  # Maximize the browser immediately
+
+        driver.get(search_url)
+        time.sleep(4)  # Let results load
+
+        # Click first video title
+        first_video = driver.find_element(By.ID, "video-title")
+        first_video.click()
+        print("▶️ First video clicked")
+
+        # Skip ads loop
+
+        print("🔍 Looking for Skip buttons...")
+
+        skip_selectors = [
+            ".ytp-ad-skip-button",
+            ".ytp-ad-skip-button-modern",
+            ".ytp-skip-ad-button",
+            "button.ytp-ad-skip-button",
+            "[title*='Skip ad']",
+            "[title*='Skip Ads']",
+            "[aria-label*='Skip']",
+        ]
+
+        max_attempts = 60  # 30 seconds checking
+        for attempt in range(max_attempts):
+            for selector in skip_selectors:
+                try:
+                    skip_button = driver.find_element(By.CSS_SELECTOR, selector)
+                    if skip_button.is_displayed() and skip_button.is_enabled():
+                        driver.execute_script(
+                            """
+                            arguments[0].scrollIntoView({block: 'center'});
+                            arguments[0].click();
+                        """,
+                            skip_button,
+                        )
+                        print(
+                            f"✅ SKIP CLICKED! (attempt {attempt+1}, selector: {selector})"
+                        )
+                        time.sleep(1.5)
+                        break
+                except NoSuchElementException:
+                    pass
+                except Exception as e:
+                    print(f"Exception during skip attempt: {e}")
+            time.sleep(0.5)
+
+        print("🎵 Video playing now")
+        speak(f"Playing first result for {song_name}")
 
     elif "news" in c.lower():
         r = requests.get(
@@ -103,7 +162,7 @@ def processCommand(c):
 
 
 if __name__ == "__main__":
-    speak("Initializing bestie....")
+    speak("Initializing virtual bestie malar....")
     while True:
         # Listen for the wake word "bestie"
         # obtain audio from the microphone
