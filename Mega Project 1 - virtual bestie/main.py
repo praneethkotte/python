@@ -304,7 +304,7 @@ def processCommand(c):
 
 
 if __name__ == "__main__":
-    speak("Initializing virtual bestie malar....")
+    speak("Initializing virtual bestie....")
     while True:
         # Listen for the wake word "bestie"
         # obtain audio from the microphone
@@ -317,7 +317,7 @@ if __name__ == "__main__":
                 audio = r.listen(source, timeout=2, phrase_time_limit=1)
             word = r.recognize_google(audio)
             if word.lower() == "bestie":
-                speak("Ya praneeth its your bestie malar")
+                speak("Ya praneeth its your bestie")
                 # Listen for command
                 with sr.Microphone() as source:
                     print("bestie Active...")
